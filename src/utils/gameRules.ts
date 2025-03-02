@@ -145,8 +145,6 @@ export const checkAchievements = (
 ): Achievement[] => {
   const unlockedAchievements: Achievement[] = [];
   const now = new Date();
-  const updatedAt = new Date(todo.updatedAt);
-  const dueDate = new Date(todo.dueDate);
 
   // Check each achievement condition
   ACHIEVEMENTS.forEach(achievement => {
@@ -154,30 +152,41 @@ export const checkAchievements = (
       switch (achievement.id) {
         case 'first_todo':
           if (stats.completedTasks === 1) {
-            unlockedAchievements.push({ ...achievement, unlockedAt: now.toISOString() });
+            unlockedAchievements.push({
+              ...achievement,
+              unlockedAt: now.toISOString()
+            });
           }
           break;
 
         case 'streak_3':
           if (stats.currentStreak >= 3) {
-            unlockedAchievements.push({ ...achievement, unlockedAt: now.toISOString() });
+            unlockedAchievements.push({
+              ...achievement,
+              unlockedAt: now.toISOString()
+            });
           }
           break;
 
         case 'streak_7':
           if (stats.currentStreak >= 7) {
-            unlockedAchievements.push({ ...achievement, unlockedAt: now.toISOString() });
+            unlockedAchievements.push({
+              ...achievement,
+              unlockedAt: now.toISOString()
+            });
           }
           break;
 
         case 'early_bird':
-          if (todo.status === 'completed' && !isNaN(updatedAt.getTime()) && updatedAt.getHours() < 9) {
+          const completedDate = todo.completedAt ? new Date(todo.completedAt) : null;
+          if (todo.status === 'completed' && completedDate && completedDate.getHours() < 9) {
             unlockedAchievements.push({ ...achievement, unlockedAt: now.toISOString() });
           }
           break;
 
         case 'night_owl':
-          if (todo.status === 'completed' && !isNaN(updatedAt.getTime()) && updatedAt.getHours() >= 22) {
+          const completionTime = todo.completedAt ? new Date(todo.completedAt) : null;
+          if (todo.status === 'completed' && completionTime && completionTime.getHours() >= 22) {
             unlockedAchievements.push({ ...achievement, unlockedAt: now.toISOString() });
           }
           break;
@@ -192,7 +201,8 @@ export const checkAchievements = (
           break;
 
         case 'perfectionist':
-          if (todo.status === 'completed' && !isNaN(dueDate.getTime()) && now < dueDate) {
+          const taskDueDate = todo.dueDate ? new Date(todo.dueDate) : null;
+          if (todo.status === 'completed' && taskDueDate && now < taskDueDate) {
             const earlyTasks = stats.tasksByCategory['early'] || 0;
             if (earlyTasks >= 10) {
               unlockedAchievements.push({ ...achievement, unlockedAt: now.toISOString() });
@@ -202,7 +212,8 @@ export const checkAchievements = (
 
         case 'category_master':
           const usedCategories = new Set(Object.keys(stats.tasksByCategory));
-          if (usedCategories.size >= DEFAULT_CATEGORIES.length) {
+          const defaultCats = DEFAULT_CATEGORIES;
+          if (usedCategories.size >= defaultCats.length) {
             unlockedAchievements.push({ ...achievement, unlockedAt: now.toISOString() });
           }
           break;
@@ -228,7 +239,8 @@ export const checkAchievements = (
 
         case 'category_pro':
           const categoriesWithTasks = Object.keys(stats.tasksByCategory).length;
-          if (categoriesWithTasks >= DEFAULT_CATEGORIES.length) {
+          const defaultCategories = DEFAULT_CATEGORIES;
+          if (categoriesWithTasks >= defaultCategories.length) {
             unlockedAchievements.push({ ...achievement, unlockedAt: now.toISOString() });
           }
           break;

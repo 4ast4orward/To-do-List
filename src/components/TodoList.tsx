@@ -18,7 +18,9 @@ interface TodoActionMenuProps {
 
 const TodoActionMenu: React.FC<TodoActionMenuProps> = ({ todo, onClose, onStatusChange, onReschedule }) => {
   const [showCalendar, setShowCalendar] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>(todo.dueDate || new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    return todo.dueDate ? new Date(todo.dueDate) : new Date();
+  });
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -107,14 +109,14 @@ const TodoList: React.FC<TodoListProps> = ({
     if (!lastResetDate || !isSameMonth(new Date(lastResetDate), now)) {
       const currentTodos = todos.filter(todo => 
         todo.status === 'pending' || 
-        (todo.completedAt && isSameMonth(todo.completedAt, now)) ||
-        (todo.skippedAt && isSameMonth(todo.skippedAt, now))
+        (todo.completedAt && isSameMonth(new Date(todo.completedAt), now)) ||
+        (todo.skippedAt && isSameMonth(new Date(todo.skippedAt), now))
       );
       
       const tasksToArchive = todos.filter(todo => 
-        (todo.status !== 'pending' && !isSameMonth(todo.createdAt, now)) ||
-        (todo.completedAt && !isSameMonth(todo.completedAt, now)) ||
-        (todo.skippedAt && !isSameMonth(todo.skippedAt, now))
+        (todo.status !== 'pending' && !isSameMonth(new Date(todo.createdAt), now)) ||
+        (todo.completedAt && !isSameMonth(new Date(todo.completedAt), now)) ||
+        (todo.skippedAt && !isSameMonth(new Date(todo.skippedAt), now))
       );
 
       if (tasksToArchive.length > 0) {
@@ -160,19 +162,17 @@ const TodoList: React.FC<TodoListProps> = ({
     setSelectedCategory(null);
   };
 
-  const handleStatusUpdate = (todoId: string, newStatus: TodoStatus) => {
-    onUpdateTodos(todos.map(todo => {
-      if (todo.id === todoId) {
-        return {
-          ...todo,
-          status: newStatus,
-          updatedAt: new Date().toISOString(),
-          completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined,
-          skippedAt: newStatus === 'skipped' ? new Date().toISOString() : undefined
-        };
-      }
-      return todo;
-    }));
+  const handleStatusUpdate = (todo: TodoType, newStatus: TodoStatus) => {
+    const now = new Date().toISOString();
+    const updatedTodo = {
+      ...todo,
+      status: newStatus,
+      updatedAt: now,
+      completedAt: newStatus === 'completed' ? now : undefined,
+      skippedAt: newStatus === 'skipped' ? now : undefined
+    };
+
+    onUpdateTodos(todos.map(t => t.id === todo.id ? updatedTodo : t));
   };
 
   const handleDeleteTodo = (todoId: string) => {
@@ -330,7 +330,8 @@ const TodoList: React.FC<TodoListProps> = ({
 
     return todos.filter(todo => 
       todo.status === 'completed' && 
-      isWithinInterval(todo.updatedAt, { start: weekStart, end: weekEnd })
+      todo.updatedAt &&
+      isWithinInterval(new Date(todo.updatedAt), { start: weekStart, end: weekEnd })
     ).length;
   };
 
@@ -557,7 +558,7 @@ const TodoList: React.FC<TodoListProps> = ({
           <TodoItem
             key={todo.id}
             todo={todo}
-            onToggle={(newStatus: TodoStatus) => handleStatusUpdate(todo.id, newStatus)}
+            onToggle={(newStatus: TodoStatus) => handleStatusUpdate(todo, newStatus)}
             onDelete={() => handleDeleteTodo(todo.id)}
             onEdit={handleEditTodo}
           />
