@@ -8,11 +8,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    sourcemap: true,
-    rollupOptions: {
-      output: {
-        manualChunks: undefined,
-      },
-    },
+    sourcemap: false,
+    minify: true,
   },
+  server: {
+    port: 3000,
+    open: true
+  }
 }) 
