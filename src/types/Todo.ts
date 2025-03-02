@@ -9,42 +9,52 @@ export type TodoStatus = 'pending' | 'completed' | 'skipped';
 
 export interface Achievement {
   id: string;
-  name: string;
+  title: string;
   description: string;
   icon: string;
-  unlockedAt?: Date;
+  unlockedAt: Date;
 }
 
 export interface BackgroundSettings {
-  type: 'preset' | 'gradient' | 'image' | 'pattern';
+  type: 'preset' | 'gradient' | 'pattern' | 'image';
   preset?: string;
   gradient?: {
     colors: string[];
     angle: number;
   };
-  imageUrl?: string;
   pattern?: string;
+  imageUrl?: string;
   opacity: number;
 }
 
 export interface UserStats {
-  totalTasks: number;
-  completedTasks: number;
-  skippedTasks: number;
-  currentStreak: number;
-  longestStreak: number;
-  tasksByCategory: Record<string, number>;
-  lastActive: Date;
+  points: number;
+  streak: number;
+  totalCompleted: number;
+  totalSkipped: number;
+  achievements: Achievement[];
+  level: number;
+  backgroundSettings: BackgroundSettings;
+  momentum: {
+    level: number;
+    multiplier: number;
+    streakDays: number;
+    weeklyTasks: number;
+    lastWeekTasks: number;
+    growthRate: number;
+  };
 }
 
 export interface Todo {
   id: string;
   title: string;
+  description?: string;
   status: 'pending' | 'completed' | 'skipped';
+  dueDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
-  dueDate: Date | null;
-  categoryId: string | null;
+  category: string;
+  priority: 'low' | 'medium' | 'high';
 }
 
 export interface MomentumStats {
