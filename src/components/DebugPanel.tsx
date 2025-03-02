@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { clearAllData, saveUserStats, saveTodos } from '../utils/storage';
-import { Todo, UserStats } from '../types/Todo';
+import { Todo, UserStats, Achievement } from '../types/Todo';
 import { ACHIEVEMENTS } from '../utils/gameRules';
 
 interface DebugPanelProps {
@@ -38,6 +38,26 @@ const DebugPanel: React.FC<DebugPanelProps> = ({
       totalSkipped: 0,
       achievements: [],
       level: 1,
+      backgroundSettings: {
+        type: 'preset',
+        preset: 'default',
+        opacity: 1
+      },
+      momentum: {
+        level: 1,
+        multiplier: 1,
+        streakDays: 0,
+        weeklyTasks: 0,
+        lastWeekTasks: 0,
+        growthRate: 0
+      },
+      completedTasks: 0,
+      skippedTasks: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      lastActive: new Date().toISOString(),
+      totalTasks: 0,
+      tasksByCategory: {}
     });
     setTodos([]);
   };
@@ -49,20 +69,24 @@ const DebugPanel: React.FC<DebugPanelProps> = ({
         title: 'Early Bird Test',
         description: 'Test early completion',
         status: 'pending',
-        dueDate: new Date(Date.now() + 86400000), // Tomorrow
-        createdAt: new Date(),
+        dueDate: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        category: 'default',
         categoryId: 'default',
-        points: 10,
+        priority: 'medium'
       },
       {
         id: 'test2',
         title: 'Weekend Task',
         description: 'Test weekend bonus',
         status: 'pending',
-        dueDate: new Date(Date.now() + 172800000), // Day after tomorrow
-        createdAt: new Date(),
+        dueDate: new Date(Date.now() + 172800000).toISOString(), // Day after tomorrow
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        category: 'work',
         categoryId: 'work',
-        points: 10,
+        priority: 'medium'
       },
     ];
 
@@ -98,12 +122,15 @@ const DebugPanel: React.FC<DebugPanelProps> = ({
         Math.floor(Math.random() * lockedAchievements.length)
       ];
       
-      const newAchievement = {
-        ...randomAchievement,
-        unlockedAt: new Date(),
+      const newAchievement: Achievement = {
+        id: randomAchievement.id,
+        title: randomAchievement.name || randomAchievement.title, // Handle both name and title
+        description: randomAchievement.description,
+        icon: randomAchievement.icon,
+        unlockedAt: new Date().toISOString()
       };
       
-      const newStats = {
+      const newStats: UserStats = {
         ...userStats,
         achievements: [...userStats.achievements, newAchievement],
       };

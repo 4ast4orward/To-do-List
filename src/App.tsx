@@ -37,10 +37,7 @@ function App() {
     }) : [];
   });
 
-  const [view, setView] = useState<'todos' | 'contacts' | 'bills' | 'budget'>(() => {
-    const savedView = localStorage.getItem('currentView');
-    return (savedView as 'todos' | 'contacts' | 'bills' | 'budget') || 'todos';
-  });
+  const [view, setView] = useState<'todos' | 'contacts' | 'bills' | 'budget'>('todos');
 
   // Save stats and todos whenever they change
   useEffect(() => {
@@ -76,10 +73,8 @@ function App() {
     setTodos(prevTodos => [...prevTodos, todo]);
   };
 
-  const handleUpdateTodo = (updatedTodo: Todo) => {
-    setTodos(prevTodos =>
-      prevTodos.map(todo => (todo.id === updatedTodo.id ? updatedTodo : todo))
-    );
+  const handleUpdateTodos = (updatedTodos: Todo[]) => {
+    setTodos(updatedTodos);
   };
 
   const handleDeleteTodo = (todoId: string) => {
@@ -149,7 +144,7 @@ function App() {
   };
 
   return (
-    <div className="app" data-view={view}>
+    <div className={`app ${view}`}>
       <div className="view-toggle">
         <button
           className={`view-button ${view === 'todos' ? 'active' : ''}`}
@@ -183,7 +178,7 @@ function App() {
           userStats={userStats}
           setUserStats={setUserStats}
           onAddTodo={handleAddTodo}
-          onUpdateTodo={handleUpdateTodo}
+          onUpdateTodos={handleUpdateTodos}
           onDeleteTodo={handleDeleteTodo}
         />
       ) : view === 'contacts' ? (

@@ -41,7 +41,7 @@ const AchievementSystem: React.FC<AchievementSystemProps> = ({ userStats }) => {
           >
             <div className="achievement-icon">{achievement.icon}</div>
             <div className="achievement-details">
-              <h4>{achievement.name}</h4>
+              <h4>{achievement.title}</h4>
               <p>{achievement.description}</p>
               {achievement.unlockedAt && (
                 <span className="unlock-date">

@@ -29,6 +29,15 @@ export interface BackgroundSettings {
   opacity: number;
 }
 
+export interface MomentumStats {
+  level: number;
+  multiplier: number;
+  streakDays: number;
+  weeklyTasks: number;
+  lastWeekTasks: number;
+  growthRate: number;
+}
+
 export interface UserStats {
   points: number;
   streak: number;
@@ -37,14 +46,7 @@ export interface UserStats {
   achievements: Achievement[];
   level: number;
   backgroundSettings: BackgroundSettings;
-  momentum: {
-    level: number;
-    multiplier: number;
-    streakDays: number;
-    weeklyTasks: number;
-    lastWeekTasks: number;
-    growthRate: number;
-  };
+  momentum: MomentumStats;
   completedTasks: number;
   skippedTasks: number;
   currentStreak: number;
@@ -67,15 +69,6 @@ export interface Todo {
   priority: Priority;
   completedAt?: Date | string;
   skippedAt?: Date | string;
-}
-
-export interface MomentumStats {
-  level: number;
-  multiplier: number;
-  streakDays: number;
-  weeklyTasks: number;
-  lastWeekTasks: number;
-  growthRate: number;
 }
 
 export const DEFAULT_CATEGORIES: Category[] = [

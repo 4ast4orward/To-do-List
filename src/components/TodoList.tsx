@@ -64,12 +64,22 @@ const TodoActionMenu: React.FC<TodoActionMenuProps> = ({ todo, onClose, onStatus
 };
 
 interface TodoListProps {
-  initialTodos?: TodoType[];
-  onTodosChange?: (todos: TodoType[]) => void;
+  todos: TodoType[];
+  userStats: UserStats;
+  setUserStats: React.Dispatch<React.SetStateAction<UserStats>>;
+  onAddTodo: (todo: TodoType) => void;
+  onUpdateTodos: (todos: TodoType[]) => void;
+  onDeleteTodo: (todoId: string) => void;
 }
 
-const TodoList: React.FC<TodoListProps> = ({ initialTodos = [], onTodosChange }) => {
-  const [todos, setTodos] = useState<TodoType[]>(initialTodos);
+const TodoList: React.FC<TodoListProps> = ({ 
+  todos, 
+  userStats, 
+  setUserStats, 
+  onAddTodo, 
+  onUpdateTodos, 
+  onDeleteTodo 
+}) => {
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
   const [newTodoTitle, setNewTodoTitle] = useState('');
   const [newTodoDueDate, setNewTodoDueDate] = useState('');
@@ -109,7 +119,7 @@ const TodoList: React.FC<TodoListProps> = ({ initialTodos = [], onTodosChange })
 
       if (tasksToArchive.length > 0) {
         setArchivedTodos(prev => [...prev, ...tasksToArchive]);
-        onTodosChange?.(currentTodos);
+        onUpdateTodos(currentTodos);
         
         const notification = `${tasksToArchive.length} tasks from ${format(new Date(lastResetDate || ''), 'MMMM')} have been archived.`;
         alert(notification);
@@ -125,8 +135,8 @@ const TodoList: React.FC<TodoListProps> = ({ initialTodos = [], onTodosChange })
   }, [archivedTodos]);
 
   useEffect(() => {
-    onTodosChange?.(todos);
-  }, [todos, onTodosChange]);
+    onUpdateTodos(todos);
+  }, [todos, onUpdateTodos]);
 
   const handleAddTodo = (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,14 +154,14 @@ const TodoList: React.FC<TodoListProps> = ({ initialTodos = [], onTodosChange })
       priority: 'medium'
     };
 
-    setTodos(prev => [...prev, newTodo]);
+    onAddTodo(newTodo);
     setNewTodoTitle('');
     setNewTodoDueDate('');
     setSelectedCategory(null);
   };
 
   const handleStatusUpdate = (todoId: string, newStatus: TodoStatus) => {
-    setTodos(prev => prev.map(todo => {
+    onUpdateTodos(todos.map(todo => {
       if (todo.id === todoId) {
         return {
           ...todo,
@@ -166,11 +176,11 @@ const TodoList: React.FC<TodoListProps> = ({ initialTodos = [], onTodosChange })
   };
 
   const handleDeleteTodo = (todoId: string) => {
-    setTodos(prev => prev.filter(todo => todo.id !== todoId));
+    onUpdateTodos(todos.filter(todo => todo.id !== todoId));
   };
 
   const handleEditTodo = (updatedTodo: TodoType) => {
-    setTodos(prev => prev.map(todo => 
+    onUpdateTodos(todos.map(todo => 
       todo.id === updatedTodo.id ? { ...updatedTodo, updatedAt: new Date().toISOString() } : todo
     ));
   };
@@ -205,7 +215,7 @@ const TodoList: React.FC<TodoListProps> = ({ initialTodos = [], onTodosChange })
         ? { ...todo, categoryId: 'other', category: 'Other' } 
         : todo
     );
-    onTodosChange?.(updatedTodos);
+    onUpdateTodos(updatedTodos);
     if (selectedCategory?.id === categoryId) setSelectedCategory(null);
     if (filterCategoryId === categoryId) setFilterCategoryId('all');
   };
@@ -342,7 +352,7 @@ const TodoList: React.FC<TodoListProps> = ({ initialTodos = [], onTodosChange })
 
   const handleClearCompleted = () => {
     const remainingTodos = todos.filter(todo => todo.status !== 'completed');
-    onTodosChange?.(remainingTodos);
+    onUpdateTodos(remainingTodos);
     setShowToast({
       message: `Cleared ${todos.length - remainingTodos.length} completed tasks`,
       type: 'success'
@@ -351,7 +361,7 @@ const TodoList: React.FC<TodoListProps> = ({ initialTodos = [], onTodosChange })
 
   const handleClearAll = () => {
     const taskCount = todos.length;
-    onTodosChange?.([]);
+    onUpdateTodos([]);
     setShowToast({
       message: `Cleared all ${taskCount} tasks`,
       type: 'success'
@@ -359,7 +369,7 @@ const TodoList: React.FC<TodoListProps> = ({ initialTodos = [], onTodosChange })
   };
 
   const handleReset = () => {
-    onTodosChange?.([]);
+    onUpdateTodos([]);
     setCategories(DEFAULT_CATEGORIES);
     setShowToast({
       message: 'App reset to default state',
