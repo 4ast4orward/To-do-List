@@ -1,18 +1,20 @@
 export interface Category {
   id: string;
   name: string;
-  icon: string;
   color: string;
+  icon: string;
 }
 
 export type TodoStatus = 'pending' | 'completed' | 'skipped';
+
+export type Priority = 'low' | 'medium' | 'high';
 
 export interface Achievement {
   id: string;
   title: string;
   description: string;
   icon: string;
-  unlockedAt: Date;
+  unlockedAt: Date | string;
 }
 
 export interface BackgroundSettings {
@@ -43,18 +45,28 @@ export interface UserStats {
     lastWeekTasks: number;
     growthRate: number;
   };
+  completedTasks: number;
+  skippedTasks: number;
+  currentStreak: number;
+  longestStreak: number;
+  lastActive: Date | string;
+  totalTasks: number;
+  tasksByCategory: Record<string, number>;
 }
 
 export interface Todo {
   id: string;
   title: string;
   description?: string;
-  status: 'pending' | 'completed' | 'skipped';
-  dueDate: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
+  status: TodoStatus;
+  dueDate: Date | string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
   category: string;
-  priority: 'low' | 'medium' | 'high';
+  categoryId: string;
+  priority: Priority;
+  completedAt?: Date | string;
+  skippedAt?: Date | string;
 }
 
 export interface MomentumStats {
@@ -71,4 +83,5 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'personal', name: 'Personal', color: '#2196F3', icon: '👤' },
   { id: 'shopping', name: 'Shopping', color: '#FF9800', icon: '🛒' },
   { id: 'health', name: 'Health', color: '#E91E63', icon: '❤️' },
+  { id: 'other', name: 'Other', color: '#9E9E9E', icon: '📌' }
 ]; 

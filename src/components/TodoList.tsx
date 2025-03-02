@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { format, isToday, isFuture, differenceInDays, startOfWeek, endOfWeek, isWithinInterval, startOfMonth, isSameMonth } from 'date-fns';
-import { Todo, Category, TodoStatus, UserStats, DEFAULT_CATEGORIES } from '../types/Todo';
+import { Todo as TodoType, Category, TodoStatus, UserStats, DEFAULT_CATEGORIES } from '../types/Todo';
 import { calculateTaskPoints, checkAchievements } from '../utils/gameRules';
 import ResetMenu from './ResetMenu';
 import Toast from './Toast';
 import SwipeableTodoItem from './SwipeableTodoItem';
+import TodoItem from './Todo';
 
 const COMMON_EMOJIS = ['💼', '👤', '🛒', '❤️', '📌', '🎮', '📚', '✈️', '🎵', '🎨', '🏃', '🍳', '🎬', '💻', '🎓'];
 
 interface TodoActionMenuProps {
-  todo: Todo;
+  todo: TodoType;
   onClose: () => void;
   onStatusChange: (status: TodoStatus) => void;
   onReschedule: (date: Date) => void;
@@ -17,7 +18,7 @@ interface TodoActionMenuProps {
 
 const TodoActionMenu: React.FC<TodoActionMenuProps> = ({ todo, onClose, onStatusChange, onReschedule }) => {
   const [showCalendar, setShowCalendar] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(todo.dueDate);
+  const [selectedDate, setSelectedDate] = useState<Date>(todo.dueDate || new Date());
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,9 +50,11 @@ const TodoActionMenu: React.FC<TodoActionMenuProps> = ({ todo, onClose, onStatus
             value={format(selectedDate, "yyyy-MM-dd'T'HH:mm")}
             onChange={(e) => {
               const newDate = new Date(e.target.value);
-              setSelectedDate(newDate);
-              onReschedule(newDate);
-              onClose();
+              if (!isNaN(newDate.getTime())) {
+                setSelectedDate(newDate);
+                onReschedule(newDate);
+                onClose();
+              }
             }}
           />
         </div>
@@ -61,27 +64,17 @@ const TodoActionMenu: React.FC<TodoActionMenuProps> = ({ todo, onClose, onStatus
 };
 
 interface TodoListProps {
-  todos: Todo[];
-  userStats: UserStats;
-  setUserStats: React.Dispatch<React.SetStateAction<UserStats>>;
-  onAddTodo: (todo: Todo) => void;
-  onUpdateTodo: (todo: Todo) => void;
-  onDeleteTodo: (todoId: string) => void;
+  initialTodos?: TodoType[];
+  onTodosChange?: (todos: TodoType[]) => void;
 }
 
-const TodoList: React.FC<TodoListProps> = ({
-  todos,
-  userStats,
-  setUserStats,
-  onAddTodo,
-  onUpdateTodo,
-  onDeleteTodo
-}) => {
+const TodoList: React.FC<TodoListProps> = ({ initialTodos = [], onTodosChange }) => {
+  const [todos, setTodos] = useState<TodoType[]>(initialTodos);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
   const [newTodoTitle, setNewTodoTitle] = useState('');
   const [newTodoDueDate, setNewTodoDueDate] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
+  const [filterCategoryId, setFilterCategoryId] = useState('all');
   const [activeActionMenu, setActiveActionMenu] = useState<string | null>(null);
   const [showNewCategoryForm, setShowNewCategoryForm] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -91,7 +84,7 @@ const TodoList: React.FC<TodoListProps> = ({
   const [showToast, setShowToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Add new state for archived todos
-  const [archivedTodos, setArchivedTodos] = useState<Todo[]>(() => {
+  const [archivedTodos, setArchivedTodos] = useState<TodoType[]>(() => {
     const saved = localStorage.getItem('archivedTodos');
     return saved ? JSON.parse(saved) : [];
   });
@@ -102,7 +95,6 @@ const TodoList: React.FC<TodoListProps> = ({
     const lastResetDate = localStorage.getItem('lastResetDate');
     
     if (!lastResetDate || !isSameMonth(new Date(lastResetDate), now)) {
-      // Archive completed and skipped tasks from previous month
       const currentTodos = todos.filter(todo => 
         todo.status === 'pending' || 
         (todo.completedAt && isSameMonth(todo.completedAt, now)) ||
@@ -117,14 +109,12 @@ const TodoList: React.FC<TodoListProps> = ({
 
       if (tasksToArchive.length > 0) {
         setArchivedTodos(prev => [...prev, ...tasksToArchive]);
-        onUpdateTodo(currentTodos);
+        onTodosChange?.(currentTodos);
         
-        // Show notification about archived tasks
         const notification = `${tasksToArchive.length} tasks from ${format(new Date(lastResetDate || ''), 'MMMM')} have been archived.`;
         alert(notification);
       }
       
-      // Update last reset date
       localStorage.setItem('lastResetDate', now.toISOString());
     }
   }, []);
@@ -134,35 +124,60 @@ const TodoList: React.FC<TodoListProps> = ({
     localStorage.setItem('archivedTodos', JSON.stringify(archivedTodos));
   }, [archivedTodos]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    onTodosChange?.(todos);
+  }, [todos, onTodosChange]);
+
+  const handleAddTodo = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTodoTitle.trim()) return;
 
-    const newTodo: Todo = {
+    const newTodo: TodoType = {
       id: crypto.randomUUID(),
       title: newTodoTitle.trim(),
       status: 'pending',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      dueDate: newTodoDueDate ? new Date(newTodoDueDate) : null,
-      categoryId: selectedCategory?.id || null
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      dueDate: newTodoDueDate || new Date().toISOString(),
+      category: selectedCategory?.name || 'Other',
+      categoryId: selectedCategory?.id || 'other',
+      priority: 'medium'
     };
 
-    onAddTodo(newTodo);
+    setTodos(prev => [...prev, newTodo]);
     setNewTodoTitle('');
     setNewTodoDueDate('');
     setSelectedCategory(null);
+  };
 
-    // Update user stats
-    setUserStats(prev => ({
-      ...prev,
-      totalTasks: prev.totalTasks + 1,
-      tasksByCategory: {
-        ...prev.tasksByCategory,
-        [selectedCategory?.id || 'uncategorized']: (prev.tasksByCategory[selectedCategory?.id || 'uncategorized'] || 0) + 1
+  const handleStatusUpdate = (todoId: string, newStatus: TodoStatus) => {
+    setTodos(prev => prev.map(todo => {
+      if (todo.id === todoId) {
+        return {
+          ...todo,
+          status: newStatus,
+          updatedAt: new Date().toISOString(),
+          completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined,
+          skippedAt: newStatus === 'skipped' ? new Date().toISOString() : undefined
+        };
       }
+      return todo;
     }));
   };
+
+  const handleDeleteTodo = (todoId: string) => {
+    setTodos(prev => prev.filter(todo => todo.id !== todoId));
+  };
+
+  const handleEditTodo = (updatedTodo: TodoType) => {
+    setTodos(prev => prev.map(todo => 
+      todo.id === updatedTodo.id ? { ...updatedTodo, updatedAt: new Date().toISOString() } : todo
+    ));
+  };
+
+  const filteredTodos = todos.filter(todo => 
+    filterCategoryId === 'all' || todo.categoryId === filterCategoryId
+  );
 
   const addCategory = (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,51 +198,32 @@ const TodoList: React.FC<TodoListProps> = ({
   };
 
   const deleteCategory = (categoryId: string) => {
-    if (categories.length <= 1) return; // Prevent deleting all categories
+    if (categories.length <= 1) return;
     setCategories(categories.filter(cat => cat.id !== categoryId));
-    onUpdateTodo(todos.map(todo => 
+    const updatedTodos = todos.map(todo => 
       todo.categoryId === categoryId 
-        ? { ...todo, categoryId: 'other' } 
+        ? { ...todo, categoryId: 'other', category: 'Other' } 
         : todo
-    ));
+    );
+    onTodosChange?.(updatedTodos);
     if (selectedCategory?.id === categoryId) setSelectedCategory(null);
     if (filterCategoryId === categoryId) setFilterCategoryId('all');
   };
 
-  const handleStatusUpdate = (todo: Todo, newStatus: 'pending' | 'completed' | 'skipped') => {
-    const updatedTodo = {
-      ...todo,
-      status: newStatus,
-      updatedAt: new Date()
-    };
-    onUpdateTodo(updatedTodo);
-
-    // Update user stats
-    setUserStats(prev => {
-      const stats = { ...prev };
-      if (newStatus === 'completed') {
-        stats.completedTasks++;
-        stats.currentStreak = (stats.currentStreak || 0) + 1;
-        stats.longestStreak = Math.max(stats.longestStreak || 0, stats.currentStreak);
-      } else if (newStatus === 'skipped') {
-        stats.skippedTasks++;
-        stats.currentStreak = 0;
-      }
-      stats.lastActive = new Date();
-      return stats;
-    });
-  };
-
-  const getDueStatus = (todo: Todo) => {
+  const getDueStatus = (todo: TodoType) => {
     if (todo.status !== 'pending') return '';
     
     const today = new Date();
-    const daysUntilDue = differenceInDays(todo.dueDate, today);
+    const dueDate = new Date(todo.dueDate);
     
-    if (!isFuture(todo.dueDate) && !isToday(todo.dueDate)) {
+    if (isNaN(dueDate.getTime())) return '';
+    
+    const daysUntilDue = differenceInDays(dueDate, today);
+    
+    if (!isFuture(dueDate) && !isToday(dueDate)) {
       return 'overdue';
     }
-    if (isToday(todo.dueDate)) {
+    if (isToday(dueDate)) {
       return 'due-today';
     }
     if (daysUntilDue <= 3) {
@@ -236,16 +232,20 @@ const TodoList: React.FC<TodoListProps> = ({
     return '';
   };
 
-  const getDueStatusText = (todo: Todo) => {
+  const getDueStatusText = (todo: TodoType) => {
     if (todo.status !== 'pending') return '';
     
     const today = new Date();
-    const daysUntilDue = differenceInDays(todo.dueDate, today);
+    const dueDate = new Date(todo.dueDate);
     
-    if (!isFuture(todo.dueDate) && !isToday(todo.dueDate)) {
+    if (isNaN(dueDate.getTime())) return '';
+    
+    const daysUntilDue = differenceInDays(dueDate, today);
+    
+    if (!isFuture(dueDate) && !isToday(dueDate)) {
       return '⚠️ Overdue';
     }
-    if (isToday(todo.dueDate)) {
+    if (isToday(dueDate)) {
       return '⏰ Due Today';
     }
     if (daysUntilDue <= 3) {
@@ -254,7 +254,7 @@ const TodoList: React.FC<TodoListProps> = ({
     return '';
   };
 
-  const getStatusBadge = (todo: Todo) => {
+  const getStatusBadge = (todo: TodoType) => {
     switch (todo.status) {
       case 'completed':
         return <span className="status-badge completed">✓ Completed</span>;
@@ -265,17 +265,21 @@ const TodoList: React.FC<TodoListProps> = ({
     }
   };
 
-  const getStatusIcon = (todo: Todo) => {
+  const getStatusIcon = (todo: TodoType) => {
     if (todo.status === 'completed') return '✅';
     if (todo.status === 'skipped') return '⏭️';
     
     const today = new Date();
-    const daysUntilDue = differenceInDays(todo.dueDate, today);
+    const dueDate = new Date(todo.dueDate);
     
-    if (!isFuture(todo.dueDate) && !isToday(todo.dueDate)) {
+    if (isNaN(dueDate.getTime())) return '📝';
+    
+    const daysUntilDue = differenceInDays(dueDate, today);
+    
+    if (!isFuture(dueDate) && !isToday(dueDate)) {
       return '⚠️';  // Overdue
     }
-    if (isToday(todo.dueDate)) {
+    if (isToday(dueDate)) {
       return '⏰';  // Due Today
     }
     if (daysUntilDue <= 3) {
@@ -290,16 +294,23 @@ const TodoList: React.FC<TodoListProps> = ({
            { id: 'uncategorized', name: 'Uncategorized', color: '#95a5a6', icon: '📌' };
   };
 
-  const filteredAndSortedTodos = [...todos]
-    .filter(todo => filterCategoryId === 'all' || todo.categoryId === filterCategoryId)
+  const filteredAndSortedTodos = [...filteredTodos]
     .sort((a, b) => {
       // First, sort by status (pending first)
       if (a.status !== b.status) {
         if (a.status === 'pending') return -1;
         if (b.status === 'pending') return 1;
       }
+      
       // Then by due date
-      return a.dueDate.getTime() - b.dueDate.getTime();
+      const aDate = new Date(a.dueDate);
+      const bDate = new Date(b.dueDate);
+      
+      if (isNaN(aDate.getTime()) && isNaN(bDate.getTime())) return 0;
+      if (isNaN(aDate.getTime())) return 1;
+      if (isNaN(bDate.getTime())) return -1;
+      
+      return aDate.getTime() - bDate.getTime();
     });
 
   const calculateWeeklyCompletions = () => {
@@ -330,17 +341,17 @@ const TodoList: React.FC<TodoListProps> = ({
   }, [todos]);
 
   const handleClearCompleted = () => {
-    const completedTasks = todos.filter(todo => todo.status === 'completed');
-    onUpdateTodo(todos.filter(todo => todo.status !== 'completed'));
+    const remainingTodos = todos.filter(todo => todo.status !== 'completed');
+    onTodosChange?.(remainingTodos);
     setShowToast({
-      message: `Cleared ${completedTasks.length} completed tasks`,
+      message: `Cleared ${todos.length - remainingTodos.length} completed tasks`,
       type: 'success'
     });
   };
 
   const handleClearAll = () => {
     const taskCount = todos.length;
-    onUpdateTodo([]);
+    onTodosChange?.([]);
     setShowToast({
       message: `Cleared all ${taskCount} tasks`,
       type: 'success'
@@ -348,30 +359,8 @@ const TodoList: React.FC<TodoListProps> = ({
   };
 
   const handleReset = () => {
-    // Reset to initial state
-    onUpdateTodo([]);
+    onTodosChange?.([]);
     setCategories(DEFAULT_CATEGORIES);
-    setUserStats({
-      points: 0,
-      streak: 0,
-      totalCompleted: 0,
-      totalSkipped: 0,
-      achievements: [],
-      level: 1,
-      backgroundSettings: {
-        type: 'preset',
-        preset: 'basic',
-        opacity: 1
-      },
-      momentum: {
-        level: 1,
-        multiplier: 1,
-        streakDays: 0,
-        weeklyTasks: 0,
-        lastWeekTasks: 0,
-        growthRate: 0
-      }
-    });
     setShowToast({
       message: 'App reset to default state',
       type: 'info'
@@ -383,11 +372,14 @@ const TodoList: React.FC<TodoListProps> = ({
   // Monthly stats
   const getMonthlyStats = () => {
     const now = new Date();
+    const monthStart = startOfMonth(now);
+    
     const completedThisMonth = todos.filter(todo => 
       todo.status === 'completed' && 
-      isWithinInterval(todo.updatedAt, {
-        start: new Date(now.getFullYear(), now.getMonth(), 1),
-        end: new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      todo.completedAt && 
+      isWithinInterval(new Date(todo.completedAt), {
+        start: monthStart,
+        end: now
       })
     ).length;
 
@@ -405,7 +397,7 @@ const TodoList: React.FC<TodoListProps> = ({
     <div className="todo-list">
       <h1>To Do or To Done List</h1>
       
-      {/* Add monthly stats */}
+      {/* Monthly stats */}
       <div className="monthly-stats">
         <p>This Month's Progress:</p>
         <div className="stats-row">
@@ -414,7 +406,7 @@ const TodoList: React.FC<TodoListProps> = ({
         </div>
       </div>
 
-      {/* Add Reset Menu */}
+      {/* Reset Menu */}
       <ResetMenu
         todos={todos}
         onClearCompleted={handleClearCompleted}
@@ -422,7 +414,17 @@ const TodoList: React.FC<TodoListProps> = ({
         onReset={handleReset}
       />
 
-      <form onSubmit={handleSubmit} className="todo-form">
+      {/* Toast notification */}
+      {showToast && (
+        <Toast
+          message={showToast.message}
+          type={showToast.type}
+          onClose={closeToast}
+        />
+      )}
+
+      {/* Add new todo form */}
+      <form onSubmit={handleAddTodo} className="todo-form">
         <div className="form-row">
           <input
             type="text"
@@ -440,7 +442,7 @@ const TodoList: React.FC<TodoListProps> = ({
           <select
             value={selectedCategory?.id || ''}
             onChange={(e) => {
-              const category = DEFAULT_CATEGORIES.find(c => c.id === e.target.value);
+              const category = categories.find(c => c.id === e.target.value);
               setSelectedCategory(category || null);
             }}
           >
@@ -455,6 +457,7 @@ const TodoList: React.FC<TodoListProps> = ({
         </div>
       </form>
 
+      {/* Category management */}
       <div className="category-management">
         <button 
           className="add-category-btn"
@@ -508,6 +511,7 @@ const TodoList: React.FC<TodoListProps> = ({
         )}
       </div>
 
+      {/* Category filter */}
       <div className="category-filter">
         <button
           className={`filter-btn ${filterCategoryId === 'all' ? 'active' : ''}`}
@@ -520,7 +524,7 @@ const TodoList: React.FC<TodoListProps> = ({
             <button
               className={`filter-btn ${filterCategoryId === category.id ? 'active' : ''}`}
               onClick={() => setFilterCategoryId(category.id)}
-              style={{ '--category-color': category.color } as any}
+              style={{ '--category-color': category.color } as React.CSSProperties}
             >
               {category.icon} {category.name}
             </button>
@@ -537,28 +541,16 @@ const TodoList: React.FC<TodoListProps> = ({
         ))}
       </div>
 
+      {/* Todo list */}
       <div className="todos">
         {filteredAndSortedTodos.map((todo) => (
-          <SwipeableTodoItem
+          <TodoItem
             key={todo.id}
             todo={todo}
-            onStatusUpdate={(newStatus) => handleStatusUpdate(todo, newStatus)}
-            onDelete={() => {
-              onDeleteTodo(todo.id);
-            }}
-          >
-            <div className={`todo-item ${todo.status}`}>
-              <div className="todo-content">
-                <div className="todo-header">
-                  <h3>{todo.title}</h3>
-                  <span className="category-badge">
-                    {getCategory(todo.categoryId || 'uncategorized').name}
-                  </span>
-                </div>
-                <p>Due: {format(new Date(todo.dueDate), 'PPp')}</p>
-              </div>
-            </div>
-          </SwipeableTodoItem>
+            onToggle={(newStatus: TodoStatus) => handleStatusUpdate(todo.id, newStatus)}
+            onDelete={() => handleDeleteTodo(todo.id)}
+            onEdit={handleEditTodo}
+          />
         ))}
       </div>
     </div>
